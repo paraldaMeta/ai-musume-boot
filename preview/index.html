@@ -215,8 +215,14 @@
       accent: '#2fd6a3', accent2: '#cbffeb', fx: 'sparkle', focus: '45% 16%',
       appBg: '#f3f8f6', appSide: '#e6f1ec',
     },
+    cursor: {
+      app: 'Cursor', name: 'Cursor 娘', credit: '原创设计 · 方块发夹与 Tab 键',
+      bg: 'radial-gradient(circle at 50% 42%, #24262b 0%, #0b0b0d 62%, #000 100%)',
+      accent: '#c9ced6', accent2: '#ffffff', fx: 'caret', focus: '47% 16%',
+      appBg: '#f5f5f6', appSide: '#eaeaec',
+    },
   }
-  var ORDER = ['claude', 'codex', 'kimi', 'workbuddy']
+  var ORDER = ['claude', 'codex', 'kimi', 'workbuddy', 'cursor']
 
   // The boot timeline, in ms. The progress bar is simulated; in a real launcher it
   // would follow the target app's window appearing.
@@ -294,6 +300,9 @@
       p.y = initial ? Math.random() * h : -10
       p.ch = GLYPHS[(Math.random() * GLYPHS.length) | 0]; p.size = 10 + Math.random() * 8
       p.vx = 0; p.vy = 10 + Math.random() * 18; p.tw = Math.random() * 6
+    } else if (kind === 'caret') {
+      p.h = 8 + Math.random() * 14; p.vx = 0; p.vy = -(8 + Math.random() * 16); p.tw = Math.random() * 6
+      p.box = Math.random() < .25; p.s = 4 + Math.random() * 5
     } else if (kind === 'stars') {
       p.y = Math.random() * h * .75; p.r = .5 + Math.random() * 1.6; p.vx = 0; p.vy = 0; p.tw = Math.random() * 6
       p.shoot = Math.random() < .015
@@ -308,7 +317,7 @@
   function startParticles() {
     sizeCanvas()
     var r = canvas.getBoundingClientRect()
-    var n = current.fx === 'stars' ? 120 : current.fx === 'code' ? 46 : 70
+    var n = current.fx === 'stars' ? 120 : current.fx === 'code' || current.fx === 'caret' ? 46 : 70
     particles = []
     for (var i = 0; i < n; i++) particles.push(spawn(current.fx, r.width, r.height, true))
     lastFrame = performance.now()
@@ -338,6 +347,16 @@
         ctx.font = p.size + 'px ui-monospace, Menlo, monospace'
         ctx.fillText(p.ch, p.x, p.y)
         if (p.y > h + 20) particles[i] = spawn('code', w, h, false)
+      } else if (c.fx === 'caret') {
+        ctx.shadowColor = 'rgba(255, 255, 255, .8)'; ctx.shadowBlur = 6
+        if (p.box) {
+          ctx.strokeStyle = 'rgba(230, 234, 240,' + (.45 * tw) + ')'; ctx.lineWidth = 1
+          ctx.strokeRect(p.x, p.y, p.s, p.s)
+        } else {
+          ctx.fillStyle = 'rgba(255, 255, 255,' + (Math.sin(p.life * 5 + p.tw) > 0 ? .75 : .12) + ')'
+          ctx.fillRect(p.x, p.y, 1.5, p.h)
+        }
+        if (p.y < -30) particles[i] = spawn('caret', w, h, false)
       } else if (c.fx === 'stars') {
         if (p.shoot) {
           ctx.shadowBlur = 0

@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Build the boot-animation launchers into ./build.
 #
-#   ./build.sh                 build all four
+#   ./build.sh                 build all five
 #   ./build.sh kimi codex      build only these
 #   ./build.sh --install       build, then copy into ~/Applications
 #
@@ -32,6 +32,7 @@ TABLE=(
   "codex|Codex 娘|com.openai.codex|Codex.app|Codex"
   "kimi|Kimi 娘|com.moonshot.kimichat|Kimi.app|Kimi"
   "workbuddy|WorkBuddy 娘|com.tencent.workbuddy.mac|WorkBuddy.app|WorkBuddy"
+  "cursor|Cursor 娘|com.todesktop.230313mzl4w4u92|Cursor.app|Cursor"
 )
 
 if ! xcrun --find swiftc >/dev/null 2>&1; then

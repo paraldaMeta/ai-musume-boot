@@ -2,7 +2,7 @@
 # Regenerate ./icons/*.icns from ../preview/assets — only needed after swapping
 # a character image. build.sh uses the committed icons and does not need this.
 #
-#   ./make-icons.sh            all four
+#   ./make-icons.sh            all five
 #   ./make-icons.sh kimi       one
 #
 # Needs ImageMagick (`brew install imagemagick`) plus the built-in sips and iconutil.
@@ -22,6 +22,7 @@ FOCUS=(
   "codex|47,11"
   "kimi|45,14"
   "workbuddy|45,16"
+  "cursor|47,16"
 )
 
 for row in "${FOCUS[@]}"; do

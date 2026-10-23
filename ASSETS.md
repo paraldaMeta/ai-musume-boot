@@ -2,7 +2,7 @@
 
 MIT 许可只覆盖代码（`launcher/src/`、`launcher/*.sh`、`preview/index.html`）。下面这些文件**不在 MIT 许可范围内**：
 
-- `preview/assets/*.jpg`：四位角色的立绘、线稿图和头像
+- `preview/assets/*.jpg`：五位角色的立绘、线稿图和头像
 - `launcher/icons/*.icns`：由立绘裁出的启动器图标
 - `docs/*`：README 用的展示图
 - `prompts/*.txt`：生成立绘用的提示词
@@ -15,6 +15,7 @@ MIT 许可只覆盖代码（`launcher/src/`、`launcher/*.sh`、`preview/index.h
 | Kimi 娘 | B 站 ZipZipPipe | 同上 |
 | Codex 娘 | ZipZipPipe「龙娘三视图」中收录，设定来自其群友 | 同上 |
 | WorkBuddy 娘 | 本项目原创 | 同上 |
+| Cursor 娘 | 本项目原创 | 同上 |
 
 图中没有使用原作者的任何图片；但角色的形象设定属于原作者，本仓库的立绘是基于这些设定的同人二创。
 
@@ -26,4 +27,4 @@ MIT 许可只覆盖代码（`launcher/src/`、`launcher/*.sh`、`preview/index.h
 
 ## 商标
 
-Claude、Codex、Kimi、WorkBuddy 是各自公司的商标，这里只用来指代对应的产品。本项目是非官方同人作品，与 Anthropic、OpenAI、月之暗面、腾讯均无关联。
+Claude、Codex、Kimi、WorkBuddy、Cursor 是各自公司的商标，这里只用来指代对应的产品。本项目是非官方同人作品，与 Anthropic、OpenAI、月之暗面、腾讯、Anysphere 均无关联。

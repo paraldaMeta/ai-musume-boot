@@ -60,7 +60,6 @@
     text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
   }
   .ui .title { font-size: 13px; letter-spacing: .4em; font-weight: 600; text-transform: uppercase; color: var(--accent2); opacity: 0; }
-  .ui .sub { font-size: 12px; letter-spacing: .14em; color: rgba(255, 255, 255, .62); opacity: 0; }
   .bar { position: relative; width: min(360px, 40vw); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; }
   .bar i {
     position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: 2px;
@@ -84,7 +83,6 @@
   <div class="ui">
     <div class="title" id="title"></div>
     <div class="bar"><i id="fill"></i></div>
-    <div class="sub" id="sub"></div>
     <div class="hint" id="hint"></div>
   </div>
 </div>
@@ -113,6 +111,11 @@
       app: 'WorkBuddy', name: 'WorkBuddy 娘', credit: '原创设计 · 绿色猫耳耳机',
       bg: 'radial-gradient(circle at 50% 42%, #0f3a30 0%, #04160f 62%, #000 100%)',
       accent: '#2fd6a3', accent2: '#cbffeb', fx: 'sparkle', focus: '45% 16%',
+    },
+    cursor: {
+      app: 'Cursor', name: 'Cursor 娘', credit: '原创设计 · 方块发夹与 Tab 键',
+      bg: 'radial-gradient(circle at 50% 42%, #24262b 0%, #0b0b0d 62%, #000 100%)',
+      accent: '#c9ced6', accent2: '#ffffff', fx: 'caret', focus: '47% 16%',
     },
   }
 
@@ -145,7 +148,6 @@
   art.style.transformOrigin = c.focus
   colorImg.style.webkitMaskPosition = colorImg.style.maskPosition = c.focus
   document.getElementById('title').textContent = c.app
-  document.getElementById('sub').textContent = c.name + ' · ' + c.credit
 
   // Every timed step reads the picture's own clock, so the bar, the hint and the
   // tail signal can never drift away from what is on screen.
@@ -190,6 +192,10 @@
       p.y = initial ? Math.random() * h : -10
       p.ch = GLYPHS[(Math.random() * GLYPHS.length) | 0]; p.size = 11 + Math.random() * 9
       p.vx = 0; p.vy = 10 + Math.random() * 18; p.tw = Math.random() * 6
+    } else if (kind === 'caret') {
+      // Blinking text cursors and the odd little wireframe cube drifting upward.
+      p.h = 9 + Math.random() * 16; p.vx = 0; p.vy = -(8 + Math.random() * 16); p.tw = Math.random() * 6
+      p.box = Math.random() < .25; p.s = 4 + Math.random() * 6
     } else if (kind === 'stars') {
       p.y = Math.random() * h * .75; p.r = .5 + Math.random() * 1.7; p.vx = 0; p.vy = 0; p.tw = Math.random() * 6
       p.shoot = Math.random() < .015
@@ -221,6 +227,17 @@
         ctx.font = p.size + 'px ui-monospace, Menlo, monospace'
         ctx.fillText(p.ch, p.x, p.y)
         if (p.y > h + 20) particles[i] = spawn('code', w, h, false)
+      } else if (c.fx === 'caret') {
+        ctx.shadowColor = 'rgba(255, 255, 255, .8)'; ctx.shadowBlur = 6
+        if (p.box) {
+          ctx.strokeStyle = 'rgba(230, 234, 240,' + (.45 * tw) + ')'; ctx.lineWidth = 1
+          ctx.strokeRect(p.x, p.y, p.s, p.s)
+        } else {
+          var on = Math.sin(p.life * 5 + p.tw) > 0 ? .75 : .12
+          ctx.fillStyle = 'rgba(255, 255, 255,' + on + ')'
+          ctx.fillRect(p.x, p.y, 1.6, p.h)
+        }
+        if (p.y < -30) particles[i] = spawn('caret', w, h, false)
       } else if (c.fx === 'stars') {
         if (p.shoot) {
           ctx.shadowBlur = 0
@@ -253,7 +270,7 @@
 
   function startParticles() {
     sizeCanvas()
-    var n = c.fx === 'stars' ? 160 : c.fx === 'code' ? 70 : 100
+    var n = c.fx === 'stars' ? 160 : c.fx === 'code' || c.fx === 'caret' ? 70 : 100
     for (var i = 0; i < n; i++) particles.push(spawn(c.fx, innerWidth, innerHeight, true))
     lastFrame = performance.now()
     requestAnimationFrame(tick)
@@ -287,7 +304,6 @@
     }
 
     animate(document.getElementById('title'), [{ opacity: 0, letterSpacing: '.6em' }, { opacity: .95, letterSpacing: '.4em' }], { duration: 1200, delay: T.uiIn })
-    animate(document.getElementById('sub'), [{ opacity: 0 }, { opacity: 1 }], { duration: 1000, delay: T.uiIn + 500 })
 
     var steps = [[400, 8], [1300, 22], [2300, 37], [3300, 55], [4400, 68], [5600, 84], [6700, 96], [7300, 100]]
     steps.forEach(function (s) { cue(s[0], function () { fill.style.width = s[1] + '%' }) })

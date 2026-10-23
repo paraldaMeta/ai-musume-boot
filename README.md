@@ -1,10 +1,10 @@
 # AI 娘开机动画启动器
 
-给 macOS 上的 **Claude、Codex、Kimi、WorkBuddy** 各配一段二次元「AI 娘」开机动画：点启动器，全屏先放一段动画，真正的应用在后面启动，等它的窗口出来，动画就溶解进去。
+给 macOS 上的 **Claude、Codex、Kimi、WorkBuddy、Cursor** 各配一段二次元「AI 娘」开机动画：点启动器，全屏先放一段动画，真正的应用在后面启动，等它的窗口出来，动画就溶解进去。
 
-灵感来自 DeepSeek Harness 社区的鲸鱼娘开机动画。那边是 DSH 插件，这里的四个应用没有插件钩子，所以做成了**不改原应用**的独立启动器。
+灵感来自 DeepSeek Harness 社区的鲸鱼娘开机动画。那边是 DSH 插件，这里的几个应用没有插件钩子，所以做成了**不改原应用**的独立启动器。
 
-![四位 AI 娘](docs/characters.jpg)
+![五位 AI 娘](docs/characters.jpg)
 
 | 启动器 | 打开的应用 | 角色 |
 |---|---|---|
@@ -12,6 +12,7 @@
 | Codex 娘 | Codex | 白发冰蓝的小龙娘，睡衣拖鞋，困困的 |
 | Kimi 娘 | Kimi | 银紫长发、月亮星星斗篷、腰间 K 字牌的女仆 |
 | WorkBuddy 娘 | WorkBuddy | 薄荷绿短发、猫耳耳机、身边飘着小猫机器人 |
+| Cursor 娘 | Cursor | 黑白灰配色、方块发夹、手里举着一颗 Tab 键帽 |
 
 <p align="center"><img src="docs/icons.png" width="720" alt="启动器图标"></p>
 
@@ -21,7 +22,7 @@
 
 1. 发光的线稿被一道斜向的光扫出来；
 2. 颜色从脸部向外晕开；
-3. 全程缓慢推镜，配上每个角色自己的粒子（金色尘埃 / 飘落的代码字符 / 星空和流星 / 薄荷色闪光）；
+3. 全程缓慢推镜，配上每个角色自己的粒子（金色尘埃 / 飘落的代码字符 / 星空和流星 / 薄荷色闪光 / 闪烁的光标和小方块）；
 4. 底部进度条走完，整屏淡出，露出已经打开的应用。
 
 ![线稿到上色](docs/line-to-color.jpg)
@@ -33,7 +34,7 @@
 ## 环境要求
 
 - macOS 14 或更新，Apple 芯片和 Intel 都能用（编出来是通用二进制）
-- 装了对应的应用：Claude、Codex、Kimi、WorkBuddy（装了哪个就用哪个）
+- 装了对应的应用：Claude、Codex、Kimi、WorkBuddy、Cursor（装了哪个就用哪个）
 - 自己编译需要 Xcode 命令行工具：`xcode-select --install`（不需要 Homebrew）
 
 ## 安装
@@ -46,7 +47,7 @@ cd ai-musume-boot/launcher
 ./build.sh --install
 ```
 
-四个启动器会装到 `~/Applications`，只想要其中几个：`./build.sh --install kimi codex`。自己编译出来的不会被系统隔离，双击就能开。
+五个启动器会装到 `~/Applications`，只想要其中几个：`./build.sh --install kimi cursor`。自己编译出来的不会被系统隔离，双击就能开。
 
 ### 方法二：下载现成的
 
@@ -64,7 +65,7 @@ cd ai-musume-boot/launcher
 ### 放进程序坞
 
 1. 把启动器拖进程序坞；
-2. 程序坞里原来的 Claude / Codex / Kimi / WorkBuddy 图标右键 →「选项」→「从程序坞中移除」，以后都从启动器打开。
+2. 程序坞里原来的 Claude / Codex / Kimi / WorkBuddy / Cursor 图标右键 →「选项」→「从程序坞中移除」，以后都从启动器打开。
 
 ## 使用
 
@@ -78,7 +79,7 @@ cd ai-musume-boot/launcher
   ~/Applications/Kimi\ 娘.app/Contents/MacOS/launcher --demo
   ```
 
-- 在浏览器里预览四段动画：打开 `preview/index.html`（可切换角色、全屏、重播）。
+- 在浏览器里预览五段动画：打开 `preview/index.html`（可切换角色、全屏、重播）。
 
 ## 自定义
 
@@ -112,10 +113,10 @@ cd ai-musume-boot/launcher
 ## 角色出处与声明
 
 - **Claude 娘、Kimi 娘、Codex 娘**的形象设定来自 B 站 UP 主 **[ZipZipPipe](https://space.bilibili.com/4168597)** 的「AI 娘」系列；其中 Codex 娘的设定按 ZipZipPipe 在「龙娘三视图」动态里的说明，来自其群友。
-- **WorkBuddy 娘**是本项目为 WorkBuddy 新设计的角色（绿色、猫耳耳机）。
+- **WorkBuddy 娘**（绿色、猫耳耳机）和 **Cursor 娘**（黑白灰、方块发夹、Tab 键帽）是本项目新设计的原创角色。
 - 仓库里的立绘是按上述设定的**文字描述**用 OpenAI 的图像生成重新绘制的，**不是原作者的画**，也没有使用原作者的图片。
 - 立绘与角色仅供**个人、非商业**使用。角色设定的权利归原作者；原作者如有异议，请提 Issue，会尽快修改或删除。详见 [ASSETS.md](ASSETS.md)。
-- Claude、Codex、Kimi、WorkBuddy 是各自公司的商标。本项目是**非官方**同人作品，与 Anthropic、OpenAI、月之暗面、腾讯均无关联。
+- Claude、Codex、Kimi、WorkBuddy、Cursor 是各自公司的商标。本项目是**非官方**同人作品，与 Anthropic、OpenAI、月之暗面、腾讯、Anysphere 均无关联。
 - 灵感来自 [lxj5820/dsh-boot-animation](https://github.com/lxj5820/dsh-boot-animation) 和 [GA17-LHY/dsh-boot-splash](https://github.com/GA17-LHY/dsh-boot-splash)（DeepSeek Harness 的鲸鱼娘开机动画），本项目没有使用它们的代码。
 
 ## 许可
@@ -127,10 +128,10 @@ cd ai-musume-boot/launcher
 
 ## English
 
-**AI-girl boot launchers for macOS.** Four tiny launchers — for Claude, Codex, Kimi and WorkBuddy — that play a full-screen anime boot animation while the real app starts underneath, then dissolve into it once the app's window is up. The original apps are never modified.
+**AI-girl boot launchers for macOS.** Five tiny launchers — for Claude, Codex, Kimi, WorkBuddy and Cursor — that play a full-screen anime boot animation while the real app starts underneath, then dissolve into it once the app's window is up. The original apps are never modified.
 
 - Requirements: macOS 14+, Apple Silicon or Intel; building needs only the Xcode Command Line Tools.
 - Install: `cd launcher && ./build.sh --install` (recommended), or download `AI-Musume-Boot.zip` from Releases — the prebuilt apps are ad-hoc signed, so macOS blocks the first launch until you choose "Open Anyway" in System Settings → Privacy & Security (or run `xattr -dr com.apple.quarantine` on them). Then drag the launchers into the Dock.
-- Click / Esc / Space skips; if the app is already running it is simply brought to the front; `--demo` plays the animation without opening anything; `preview/index.html` previews all four in a browser.
-- Character designs for Claude-chan, Kimi-chan and Codex-chan come from Bilibili creator ZipZipPipe's AI-girl series (Codex-chan's design originates from a member of their fan group); WorkBuddy-chan is an original design for this project. The artwork was regenerated from text descriptions with OpenAI image generation and is for personal, non-commercial use only. This is an unofficial fan project, not affiliated with Anthropic, OpenAI, Moonshot AI or Tencent.
+- Click / Esc / Space skips; if the app is already running it is simply brought to the front; `--demo` plays the animation without opening anything; `preview/index.html` previews all five in a browser.
+- Character designs for Claude-chan, Kimi-chan and Codex-chan come from Bilibili creator ZipZipPipe's AI-girl series (Codex-chan's design originates from a member of their fan group); WorkBuddy-chan and Cursor-chan are original designs for this project. The artwork was regenerated from text descriptions with OpenAI image generation and is for personal, non-commercial use only. This is an unofficial fan project, not affiliated with Anthropic, OpenAI, Moonshot AI, Tencent or Anysphere.
 - Code is MIT; artwork terms are in [ASSETS.md](ASSETS.md).

@@ -1,0 +1,7 @@
+"Cursor-chan", an original personification of the Cursor AI code editor. A cool, quick-witted young coder girl with a confident little smile, as if she already knows what you are about to type.
+- Hair: long, sleek straight hair in graphite gray with a silver-white inner layer and one white streak in her bangs, tied in a high side ponytail.
+- Eyes: pale silver-gray, each with a small white arrow-shaped highlight like a mouse pointer.
+- Accessories: a hair clip shaped like an isometric gray cube whose front face is a white triangle (like an arrow pointer); a thin white vertical bar earring like a blinking text cursor.
+- Outfit: an oversized black hoodie dress with a small gray isometric-cube emblem on the chest, white high-neck inner top, sleeves pushed up, charcoal tights, chunky white sneakers.
+- Pose: holding up a glowing translucent keyboard keycap labeled "Tab" in one hand (the word Tab is the only text allowed), the other hand reaching toward a floating code panel.
+- Background: a dark minimalist digital void, an enormous glowing wireframe isometric cube behind her, floating translucent editor panes with lines of code and faint ghost-gray autocomplete suggestions, a subtle grid floor; monochrome palette of black, graphite, silver and white with cool white light.
