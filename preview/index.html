@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 娘开机动画</title>
+<style>
+  :root {
+    --page: #0d0f13;
+    --panel: #161a21;
+    --ink: #e9edf3;
+    --muted: #9aa3b2;
+    --line: rgba(255, 255, 255, .12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 40px; }
+  header h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+  .chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .chip img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+  .chip[aria-pressed="true"] { border-color: var(--accent, #fff); box-shadow: 0 0 0 1px var(--accent, #fff) inset; }
+  .tool {
+    margin-left: auto; display: flex; gap: 8px;
+  }
+  .tool button {
+    padding: 7px 12px; border-radius: 8px; background: var(--panel);
+    border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .tool button:hover, .chip:hover { background: #1d222b; }
+
+  /* The stage stands in for an app window: the boot screen covers it, then dissolves into it. */
+  .stage {
+    position: relative; margin-top: 14px; aspect-ratio: 16 / 10; width: 100%;
+    border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000;
+  }
+  .stage.full { position: fixed; inset: 0; margin: 0; aspect-ratio: auto; border-radius: 0; border: 0; z-index: 20; }
+
+  /* ---------- the app underneath (deliberately generic) ---------- */
+  .app { position: absolute; inset: 0; display: flex; background: var(--app-bg); color: #2a2d33; }
+  .app-side { width: 22%; min-width: 120px; background: var(--app-side); padding: 44px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .app-side i { display: block; height: 10px; border-radius: 5px; background: rgba(0, 0, 0, .08); }
+  .app-side i:nth-child(1) { width: 70%; background: var(--accent); opacity: .55; }
+  .app-side i:nth-child(3) { width: 82%; } .app-side i:nth-child(4) { width: 60%; } .app-side i:nth-child(5) { width: 74%; }
+  .app-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; }
+  .app-main h2 { margin: 0; font-size: clamp(20px, 3.2vw, 34px); font-weight: 600; letter-spacing: .02em; }
+  .app-main h2 span { color: var(--accent); }
+  .app-input {
+    width: min(560px, 80%); height: 52px; border-radius: 14px; background: #fff;
+    border: 1px solid rgba(0, 0, 0, .1); box-shadow: 0 6px 24px rgba(0, 0, 0, .06);
+    display: flex; align-items: center; padding: 0 16px; color: #9a9ea6; font-size: 14px;
+  }
+  .app-dots { position: absolute; top: 12px; left: 14px; display: flex; gap: 7px; }
+  .app-dots b { width: 11px; height: 11px; border-radius: 50%; background: rgba(0, 0, 0, .15); }
+
+  /* ---------- the boot overlay ---------- */
+  .boot {
+    position: absolute; inset: 0; overflow: hidden; cursor: pointer;
+    background: var(--boot-bg); transition: opacity var(--fade, 1.8s) ease;
+    -webkit-user-select: none; user-select: none;
+  }
+  .boot[data-state="leaving"] { opacity: 0; pointer-events: none; }
+  .boot[data-state="gone"] { display: none; }
+  .art { position: absolute; inset: 0; transform-origin: 50% 45%; }
+  .art img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  }
+  /* Line art is drawn in by a soft diagonal edge sweeping across the frame. */
+  .art .line {
+    mix-blend-mode: screen;
+    -webkit-mask-image: linear-gradient(115deg, #000 42%, transparent 58%);
+    mask-image: linear-gradient(115deg, #000 42%, transparent 58%);
+    -webkit-mask-size: 320% 100%; mask-size: 320% 100%;
+    -webkit-mask-position: 100% 0; mask-position: 100% 0;
+  }
+  /* Colour blooms outward from the face. */
+  .art .color {
+    -webkit-mask-image: radial-gradient(circle at 50% 38%, #000 50%, transparent 72%);
+    mask-image: radial-gradient(circle at 50% 38%, #000 50%, transparent 72%);
+    -webkit-mask-position: 50% 38%; mask-position: 50% 38%;
+    -webkit-mask-size: 0% 0%; mask-size: 0% 0%;
+  }
+  /* Same feathered crop the DSH screen uses, so the picture never ends in a hard edge. */
+  .feather {
+    position: absolute; inset: 0;
+    -webkit-mask-image: radial-gradient(ellipse 90% 84% at 50% 48%, #000 60%, transparent 100%);
+    mask-image: radial-gradient(ellipse 90% 84% at 50% 48%, #000 60%, transparent 100%);
+  }
+  .fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .veil {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 86% 78% at 50% 50%, transparent 46%, rgba(0, 0, 0, .42) 80%, rgba(0, 0, 0, .7) 100%),
+                linear-gradient(to top, rgba(0, 0, 0, .55), transparent 28%);
+  }
+  .ui {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 0 24px 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
+  }
+  .ui .title { font-size: 12px; letter-spacing: .38em; font-weight: 600; text-transform: uppercase; color: var(--accent2); opacity: 0; }
+  .ui .sub { font-size: 11px; letter-spacing: .14em; color: rgba(255, 255, 255, .62); opacity: 0; }
+  .bar { position: relative; width: min(340px, 54%); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+  .bar i {
+    position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 12px var(--accent); transition: width .45s ease;
+  }
+  .hint { font-size: 12px; letter-spacing: .12em; color: rgba(255, 255, 255, .55); min-height: 1em; }
+
+  .replay {
+    position: absolute; right: 16px; bottom: 16px; padding: 8px 14px; border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, .12); background: rgba(255, 255, 255, .9); color: #2a2d33;
+    font: inherit; font-size: 13px; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .4s ease;
+  }
+  .stage[data-done="1"] .replay { opacity: 1; pointer-events: auto; }
+
+  footer { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  footer b { color: var(--ink); font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .tool { margin-left: 0; width: 100%; }
+    .app-side { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI 娘开机动画 · 效果预览</h1>
+    <p>点角色切换；点画面或按 Esc / 空格提前进入；「全屏」看铺满窗口的样子。底下的应用界面只是占位。</p>
+  </header>
+
+  <div class="chips" id="chips">
+    <div class="tool">
+      <button type="button" id="replayTop">重播</button>
+      <button type="button" id="fullBtn">全屏</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="app" id="app">
+      <div class="app-dots"><b></b><b></b><b></b></div>
+      <div class="app-side"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="app-main">
+        <h2>你好，我是 <span id="appName">Claude</span></h2>
+        <div class="app-input">今天想做点什么？</div>
+      </div>
+    </div>
+
+    <div class="boot" id="boot" data-state="idle" role="dialog" aria-label="开机动画">
+      <div class="feather">
+        <div class="art" id="art">
+          <img class="line" id="lineImg" alt="">
+          <img class="color" id="colorImg" alt="">
+        </div>
+      </div>
+      <canvas class="fx" id="fx"></canvas>
+      <div class="veil"></div>
+      <div class="ui">
+        <div class="title" id="title"></div>
+        <div class="bar"><i id="fill"></i></div>
+        <div class="sub" id="sub"></div>
+        <div class="hint" id="hint"></div>
+      </div>
+    </div>
+
+    <button type="button" class="replay" id="replay">再看一遍</button>
+  </div>
+
+  <footer>
+    <b>角色出处</b>：Claude 娘、Kimi 娘、Codex 娘来自 B 站 ZipZipPipe 的 AI 娘系列（Codex 娘设定来自其群友）；WorkBuddy 娘是这次新设计的。
+    立绘由 GPT 图像生成按设定重新绘制，不是原作者的图，仅供个人非商用。
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  var CHARS = {
+    claude: {
+      app: 'Claude', name: 'Claude 娘', credit: '角色设计 · ZipZipPipe',
+      bg: 'radial-gradient(circle at 50% 42%, #3a1a0c 0%, #170904 62%, #000 100%)',
+      accent: '#e8834f', accent2: '#ffd7b0', fx: 'dust', focus: '48% 12%',
+      appBg: '#f7f3ee', appSide: '#efe8df',
+    },
+    codex: {
+      app: 'Codex', name: 'Codex 娘', credit: '角色设计 · ZipZipPipe（群友设定）',
+      bg: 'radial-gradient(circle at 50% 42%, #0e1d38 0%, #050a16 62%, #000 100%)',
+      accent: '#8fc7ff', accent2: '#e6f2ff', fx: 'code', focus: '47% 11%',
+      appBg: '#f6f7f9', appSide: '#eceef2',
+    },
+    kimi: {
+      app: 'Kimi', name: 'Kimi 娘', credit: '角色设计 · ZipZipPipe',
+      bg: 'radial-gradient(circle at 50% 42%, #251741 0%, #0b0718 62%, #000 100%)',
+      accent: '#b6a0ff', accent2: '#f0ebff', fx: 'stars', focus: '45% 14%',
+      appBg: '#f6f6f8', appSide: '#ececf1',
+    },
+    workbuddy: {
+      app: 'WorkBuddy', name: 'WorkBuddy 娘', credit: '原创设计 · 绿色猫耳耳机',
+      bg: 'radial-gradient(circle at 50% 42%, #0f3a30 0%, #04160f 62%, #000 100%)',
+      accent: '#2fd6a3', accent2: '#cbffeb', fx: 'sparkle', focus: '45% 16%',
+      appBg: '#f3f8f6', appSide: '#e6f1ec',
+    },
+  }
+  var ORDER = ['claude', 'codex', 'kimi', 'workbuddy']
+
+  // The boot timeline, in ms. The progress bar is simulated; in a real launcher it
+  // would follow the target app's window appearing.
+  var T = { lineIn: 200, lineDraw: 2400, colorIn: 2500, colorDraw: 2200, lineOut: 4700, uiIn: 600, enter: 7600, fade: 1800, total: 9800 }
+
+  var stage = document.getElementById('stage')
+  var boot = document.getElementById('boot')
+  var art = document.getElementById('art')
+  var lineImg = document.getElementById('lineImg')
+  var colorImg = document.getElementById('colorImg')
+  var titleEl = document.getElementById('title')
+  var subEl = document.getElementById('sub')
+  var hintEl = document.getElementById('hint')
+  var fill = document.getElementById('fill')
+  var canvas = document.getElementById('fx')
+  var ctx = canvas.getContext('2d')
+  var chips = document.getElementById('chips')
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  var current = null
+  var anims = []
+  var timers = []
+  var running = false
+  var particles = []
+  var lastFrame = 0
+
+  // Every timed step reads the same clock as the picture: the push-in animation's
+  // own currentTime. A hidden or throttled window pauses animations and slows
+  // timers by different amounts, so separate setTimeouts drift away from what is
+  // on screen; cues on the animation clock cannot.
+  var master = null
+  var cues = []
+  function cue(ms, fn) { cues.push({ ms: ms, fn: fn }) }
+  function pump() {
+    if (!master) return
+    var t = master.currentTime || 0
+    cues = cues.filter(function (c) {
+      if (t < c.ms) return true
+      c.fn()
+      return false
+    })
+  }
+
+  function clearRun() {
+    anims.forEach(function (a) { try { a.cancel() } catch (e) { /* already gone */ } })
+    anims = []
+    timers.forEach(clearTimeout)
+    timers = []
+    cues = []
+    master = null
+  }
+
+  function animate(el, frames, opts) {
+    var a = el.animate(frames, Object.assign({ fill: 'forwards', easing: 'ease' }, opts))
+    anims.push(a)
+    return a
+  }
+
+  // ---------- particles ----------
+  function sizeCanvas() {
+    var r = canvas.getBoundingClientRect()
+    var dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = Math.max(1, Math.round(r.width * dpr))
+    canvas.height = Math.max(1, Math.round(r.height * dpr))
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  var GLYPHS = '{}()<>=;:/*+-01λ#$&[]'.split('')
+
+  function spawn(kind, w, h, initial) {
+    var p = { x: Math.random() * w, y: initial ? Math.random() * h : h + 10, life: 0 }
+    if (kind === 'dust') {
+      p.r = 0.8 + Math.random() * 2.2; p.vx = (Math.random() - .5) * 8; p.vy = -(6 + Math.random() * 14); p.tw = Math.random() * 6
+    } else if (kind === 'code') {
+      p.y = initial ? Math.random() * h : -10
+      p.ch = GLYPHS[(Math.random() * GLYPHS.length) | 0]; p.size = 10 + Math.random() * 8
+      p.vx = 0; p.vy = 10 + Math.random() * 18; p.tw = Math.random() * 6
+    } else if (kind === 'stars') {
+      p.y = Math.random() * h * .75; p.r = .5 + Math.random() * 1.6; p.vx = 0; p.vy = 0; p.tw = Math.random() * 6
+      p.shoot = Math.random() < .015
+      if (p.shoot) { p.x = Math.random() * w * .6 + w * .3; p.vx = -(260 + Math.random() * 160); p.vy = 110 + Math.random() * 60 }
+    } else {
+      p.r = 1 + Math.random() * 2.4; p.vx = (Math.random() - .5) * 10; p.vy = -(14 + Math.random() * 20); p.tw = Math.random() * 6
+      p.diamond = Math.random() < .35
+    }
+    return p
+  }
+
+  function startParticles() {
+    sizeCanvas()
+    var r = canvas.getBoundingClientRect()
+    var n = current.fx === 'stars' ? 120 : current.fx === 'code' ? 46 : 70
+    particles = []
+    for (var i = 0; i < n; i++) particles.push(spawn(current.fx, r.width, r.height, true))
+    lastFrame = performance.now()
+    requestAnimationFrame(tick)
+  }
+
+  function tick(now) {
+    if (!running) return
+    var dt = Math.min((now - lastFrame) / 1000, .05)
+    lastFrame = now
+    var r = canvas.getBoundingClientRect()
+    var w = r.width, h = r.height
+    ctx.clearRect(0, 0, w, h)
+    var c = current
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i]
+      p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt
+      var tw = .55 + .45 * Math.sin(p.life * 2.4 + p.tw)
+      if (c.fx === 'dust') {
+        ctx.fillStyle = 'rgba(255, 196, 120,' + (.55 * tw) + ')'
+        ctx.shadowColor = 'rgba(255, 160, 80, .9)'; ctx.shadowBlur = 8
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        if (p.y < -10) particles[i] = spawn('dust', w, h, false)
+      } else if (c.fx === 'code') {
+        ctx.shadowColor = 'rgba(120, 190, 255, .8)'; ctx.shadowBlur = 6
+        ctx.fillStyle = 'rgba(170, 215, 255,' + (.35 * tw) + ')'
+        ctx.font = p.size + 'px ui-monospace, Menlo, monospace'
+        ctx.fillText(p.ch, p.x, p.y)
+        if (p.y > h + 20) particles[i] = spawn('code', w, h, false)
+      } else if (c.fx === 'stars') {
+        if (p.shoot) {
+          ctx.shadowBlur = 0
+          var g = ctx.createLinearGradient(p.x, p.y, p.x - p.vx * .12, p.y - p.vy * .12)
+          g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)')
+          ctx.strokeStyle = g; ctx.lineWidth = 1.4
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .12, p.y - p.vy * .12); ctx.stroke()
+          if (p.x < -40 || p.y > h + 40) particles[i] = spawn('stars', w, h, true)
+        } else {
+          ctx.shadowColor = 'rgba(200, 180, 255, .9)'; ctx.shadowBlur = 6
+          ctx.fillStyle = 'rgba(235, 228, 255,' + (.75 * tw * tw) + ')'
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+          if (Math.random() < .0008) particles[i] = spawn('stars', w, h, true)
+        }
+      } else {
+        ctx.shadowColor = 'rgba(60, 230, 170, .9)'; ctx.shadowBlur = 8
+        ctx.fillStyle = 'rgba(190, 255, 230,' + (.6 * tw) + ')'
+        if (p.diamond) {
+          var s = p.r * 2.2
+          ctx.beginPath(); ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s * .45, p.y); ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s * .45, p.y); ctx.closePath(); ctx.fill()
+        } else {
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        }
+        if (p.y < -10) particles[i] = spawn('sparkle', w, h, false)
+      }
+    }
+    ctx.shadowBlur = 0
+    requestAnimationFrame(tick)
+  }
+
+  // ---------- the boot run ----------
+  function apply(c) {
+    var root = document.documentElement.style
+    stage.style.setProperty('--boot-bg', c.bg)
+    stage.style.setProperty('--accent', c.accent)
+    stage.style.setProperty('--accent2', c.accent2)
+    stage.style.setProperty('--app-bg', c.appBg)
+    stage.style.setProperty('--app-side', c.appSide)
+    stage.style.setProperty('--fade', (T.fade / 1000) + 's')
+    root.setProperty('--accent', c.accent)
+    // Push in toward the face, and let the colour bloom out from it.
+    art.style.transformOrigin = c.focus
+    colorImg.style.webkitMaskPosition = colorImg.style.maskPosition = c.focus
+    document.getElementById('appName').textContent = c.app
+    titleEl.textContent = c.app
+    subEl.textContent = c.name + ' · ' + c.credit
+  }
+
+  function play(key) {
+    clearRun()
+    current = CHARS[key]
+    current.key = key
+    apply(current)
+    chips.querySelectorAll('.chip').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.key === key ? 'true' : 'false') })
+    try { history.replaceState(null, '', '?c=' + key) } catch (e) { /* file: URLs may refuse */ }
+
+    stage.removeAttribute('data-done')
+    boot.style.transition = 'none'
+    boot.setAttribute('data-state', 'idle')
+    void boot.offsetWidth
+    boot.style.transition = ''
+    fill.style.width = '0%'
+    hintEl.textContent = ''
+
+    var ready = 0
+    var go = function () { if (++ready === 2) run() }
+    lineImg.onload = go; colorImg.onload = go
+    lineImg.src = 'assets/' + key + '-line.jpg'
+    colorImg.src = 'assets/' + key + '.jpg'
+    if (lineImg.complete && colorImg.complete) { ready = 0; run() }
+  }
+
+  function run() {
+    lineImg.onload = colorImg.onload = null
+    running = true
+    startParticles()
+
+    // Slow push-in across the whole run, so the still never sits dead. It is also
+    // the clock every cue below is measured against.
+    master = animate(art, [{ transform: 'scale(1.12) translateY(1.5%)' }, { transform: 'scale(1.0) translateY(0)' }],
+      { duration: T.total, easing: 'cubic-bezier(.2,.6,.2,1)' })
+    timers.push(setInterval(pump, 100))
+
+    if (reduced) {
+      animate(colorImg, [{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 200 })
+      colorImg.style.webkitMaskSize = colorImg.style.maskSize = '400% 400%'
+    } else {
+      colorImg.style.webkitMaskSize = colorImg.style.maskSize = ''
+      // 1. Glowing lines are drawn in by a sweeping edge.
+      animate(lineImg, [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: T.lineIn })
+      animate(lineImg, [
+        { webkitMaskPosition: '100% 0', maskPosition: '100% 0' },
+        { webkitMaskPosition: '0% 0', maskPosition: '0% 0' },
+      ], { duration: T.lineDraw, delay: T.lineIn, easing: 'cubic-bezier(.45,.05,.35,1)' })
+      // 2. Colour blooms out from the face.
+      animate(colorImg, [{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: 1 }], { duration: T.colorDraw, delay: T.colorIn })
+      animate(colorImg, [
+        { webkitMaskSize: '0% 0%', maskSize: '0% 0%' },
+        { webkitMaskSize: '420% 420%', maskSize: '420% 420%' },
+      ], { duration: T.colorDraw, delay: T.colorIn, easing: 'cubic-bezier(.5,0,.3,1)' })
+      // 3. The lines give way once the colour is in.
+      animate(lineImg, [{ opacity: 1 }, { opacity: 0 }], { duration: 1000, delay: T.lineOut })
+    }
+
+    animate(titleEl, [{ opacity: 0, letterSpacing: '.6em' }, { opacity: .95, letterSpacing: '.38em' }], { duration: 1200, delay: T.uiIn })
+    animate(subEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 1000, delay: T.uiIn + 500 })
+
+    // Simulated boot progress in uneven steps, like a real start-up.
+    var steps = [[400, 8], [1300, 22], [2300, 37], [3300, 55], [4400, 68], [5600, 84], [6700, 96], [7300, 100]]
+    steps.forEach(function (s) { cue(s[0], function () { fill.style.width = s[1] + '%' }) })
+    cue(1600, function () { hintEl.textContent = '点一下直接进入' })
+    cue(T.enter, enter)
+  }
+
+  function enter() {
+    if (boot.getAttribute('data-state') !== 'idle') return
+    timers.forEach(clearTimeout); timers = []; cues = []
+    fill.style.width = '100%'
+    boot.setAttribute('data-state', 'leaving')
+    setTimeout(function () {
+      if (boot.getAttribute('data-state') !== 'leaving') return
+      boot.setAttribute('data-state', 'gone')
+      running = false
+      stage.setAttribute('data-done', '1')
+    }, T.fade + 80)
+  }
+
+  // ---------- controls ----------
+  ORDER.forEach(function (key) {
+    var c = CHARS[key]
+    var b = document.createElement('button')
+    b.type = 'button'; b.className = 'chip'; b.dataset.key = key
+    b.innerHTML = '<img alt="" src="assets/' + key + '-face.jpg"><span>' + c.app + ' · ' + c.name + '</span>'
+    b.addEventListener('click', function () { play(key) })
+    chips.insertBefore(b, chips.querySelector('.tool'))
+  })
+
+  boot.addEventListener('pointerdown', enter)
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && stage.classList.contains('full') && boot.getAttribute('data-state') === 'gone') {
+      stage.classList.remove('full'); sizeCanvas(); return
+    }
+    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); enter() }
+  })
+  document.getElementById('replay').addEventListener('click', function () { play(current.key) })
+  document.getElementById('replayTop').addEventListener('click', function () { play(current.key) })
+  document.getElementById('fullBtn').addEventListener('click', function () {
+    stage.classList.toggle('full')
+    sizeCanvas()
+    play(current.key)
+  })
+  window.addEventListener('resize', function () { if (running) sizeCanvas() })
+
+  var wanted = (location.search.match(/c=(\w+)/) || [])[1]
+  play(CHARS[wanted] ? wanted : 'claude')
+})()
+</script>
+</body>
+</html>

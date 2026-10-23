@@ -1,0 +1,10 @@
+Use your image generation tool to create exactly ONE image. Do not write code, do not run shell commands, do not ask questions — just generate the image and then reply with one short sentence.
+
+Image requirements (apply to every detail below):
+- Landscape 16:9 (1536x1024), a full-window boot/splash screen key visual for a desktop app.
+- Top-quality Japanese anime illustration, like a gacha-game splash art: delicate clean lineart, soft cel shading with painterly lighting, highly detailed glossy eyes, beautiful hair strands, rich atmospheric background with depth of field.
+- One character only, centered, shown from head to mid-thigh (or full body if stated), facing the viewer.
+- Keep the bottom 15% of the frame calm and darker so a small title and progress bar can sit there.
+- No text, no logos, no watermark, no UI, no signature (the only exception is a letter explicitly requested below).
+
+Character:

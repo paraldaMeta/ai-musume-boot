@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boot</title>
+<style>
+  /* Full-window boot screen for the native launcher. The launcher fades its own
+     window out at the end, so this page never fades itself when hosted. */
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: system-ui, -apple-system, "PingFang SC", sans-serif; cursor: default; -webkit-user-select: none; user-select: none; }
+  .boot { position: fixed; inset: 0; overflow: hidden; background: var(--boot-bg); transition: opacity 1.8s ease; }
+  .boot[data-state="leaving"] { opacity: 0; }
+  .art { position: absolute; inset: 0; }
+  .art img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0;
+    /* When the screen is wider than the picture, crop from the bottom: faces sit high. */
+    object-position: 50% 15%;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  }
+  /* Fills the sides on screens much wider than the picture (an ultrawide would
+     otherwise crop the character to a band across her waist). */
+  .backdrop {
+    position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; object-fit: cover; opacity: 0;
+    filter: blur(48px) brightness(.4) saturate(1.25);
+  }
+  .art .line {
+    mix-blend-mode: screen;
+    -webkit-mask-image: linear-gradient(115deg, #000 42%, transparent 58%);
+    mask-image: linear-gradient(115deg, #000 42%, transparent 58%);
+    -webkit-mask-size: 320% 100%; mask-size: 320% 100%;
+    -webkit-mask-position: 100% 0; mask-position: 100% 0;
+  }
+  .art .color {
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 50%, transparent 72%);
+    mask-image: radial-gradient(circle at 50% 50%, #000 50%, transparent 72%);
+    -webkit-mask-size: 0% 0%; mask-size: 0% 0%;
+  }
+  .feather {
+    position: absolute; inset: 0;
+    -webkit-mask-image: radial-gradient(ellipse 92% 86% at 50% 48%, #000 62%, transparent 100%);
+    mask-image: radial-gradient(ellipse 92% 86% at 50% 48%, #000 62%, transparent 100%);
+  }
+  /* Wide screens: the picture keeps its full height in a centred column whose
+     sides dissolve into the blurred backdrop. */
+  .wide .feather {
+    left: 50%; right: auto; width: calc(100vh * var(--img-aspect, 1.5)); transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  }
+  .fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .veil {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 86% 78% at 50% 50%, transparent 46%, rgba(0, 0, 0, .42) 80%, rgba(0, 0, 0, .7) 100%),
+                linear-gradient(to top, rgba(0, 0, 0, .55), transparent 26%);
+  }
+  .ui {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 0 24px 34px;
+    display: flex; flex-direction: column; align-items: center; gap: 9px;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
+  }
+  .ui .title { font-size: 13px; letter-spacing: .4em; font-weight: 600; text-transform: uppercase; color: var(--accent2); opacity: 0; }
+  .ui .sub { font-size: 12px; letter-spacing: .14em; color: rgba(255, 255, 255, .62); opacity: 0; }
+  .bar { position: relative; width: min(360px, 40vw); height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+  .bar i {
+    position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 12px var(--accent); transition: width .45s ease;
+  }
+  .hint { font-size: 12px; letter-spacing: .12em; color: rgba(255, 255, 255, .55); min-height: 1em; }
+</style>
+</head>
+<body>
+<div class="boot" id="boot" data-state="idle">
+  <img class="backdrop" id="backdrop" alt="">
+  <div class="feather">
+    <div class="art" id="art">
+      <img class="line" id="lineImg" alt="">
+      <img class="color" id="colorImg" alt="">
+    </div>
+  </div>
+  <canvas class="fx" id="fx"></canvas>
+  <div class="veil"></div>
+  <div class="ui">
+    <div class="title" id="title"></div>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="sub" id="sub"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  var CHARS = {
+    claude: {
+      app: 'Claude', name: 'Claude 娘', credit: '角色设计 · ZipZipPipe',
+      bg: 'radial-gradient(circle at 50% 42%, #3a1a0c 0%, #170904 62%, #000 100%)',
+      accent: '#e8834f', accent2: '#ffd7b0', fx: 'dust', focus: '48% 12%',
+    },
+    codex: {
+      app: 'Codex', name: 'Codex 娘', credit: '角色设计 · ZipZipPipe（群友设定）',
+      bg: 'radial-gradient(circle at 50% 42%, #0e1d38 0%, #050a16 62%, #000 100%)',
+      accent: '#8fc7ff', accent2: '#e6f2ff', fx: 'code', focus: '47% 11%',
+    },
+    kimi: {
+      app: 'Kimi', name: 'Kimi 娘', credit: '角色设计 · ZipZipPipe',
+      bg: 'radial-gradient(circle at 50% 42%, #251741 0%, #0b0718 62%, #000 100%)',
+      accent: '#b6a0ff', accent2: '#f0ebff', fx: 'stars', focus: '45% 14%',
+    },
+    workbuddy: {
+      app: 'WorkBuddy', name: 'WorkBuddy 娘', credit: '原创设计 · 绿色猫耳耳机',
+      bg: 'radial-gradient(circle at 50% 42%, #0f3a30 0%, #04160f 62%, #000 100%)',
+      accent: '#2fd6a3', accent2: '#cbffeb', fx: 'sparkle', focus: '45% 16%',
+    },
+  }
+
+  // Same timeline as the preview. `tail` is when the picture has finished; the
+  // launcher fades out at tail AND app-ready, whichever comes second.
+  var T = { lineIn: 200, lineDraw: 2400, colorIn: 2500, colorDraw: 2200, lineOut: 4700, uiIn: 600, tail: 7600, total: 9800 }
+
+  // The native side, when there is one. In a plain browser the page fades itself.
+  var host = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.boot
+  function tell(msg) { if (host) host.postMessage(msg) }
+
+  var key = (location.search.match(/c=(\w+)/) || [])[1]
+  var c = CHARS[key] || CHARS.claude
+  key = CHARS[key] ? key : 'claude'
+
+  var boot = document.getElementById('boot')
+  var art = document.getElementById('art')
+  var lineImg = document.getElementById('lineImg')
+  var colorImg = document.getElementById('colorImg')
+  var backdrop = document.getElementById('backdrop')
+  var fill = document.getElementById('fill')
+  var hint = document.getElementById('hint')
+  var canvas = document.getElementById('fx')
+  var ctx = canvas.getContext('2d')
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  document.documentElement.style.setProperty('--boot-bg', c.bg)
+  document.documentElement.style.setProperty('--accent', c.accent)
+  document.documentElement.style.setProperty('--accent2', c.accent2)
+  art.style.transformOrigin = c.focus
+  colorImg.style.webkitMaskPosition = colorImg.style.maskPosition = c.focus
+  document.getElementById('title').textContent = c.app
+  document.getElementById('sub').textContent = c.name + ' · ' + c.credit
+
+  // Every timed step reads the picture's own clock, so the bar, the hint and the
+  // tail signal can never drift away from what is on screen.
+  var master = null
+  var cues = []
+  function cue(ms, fn) { cues.push({ ms: ms, fn: fn }) }
+  setInterval(function () {
+    if (!master) return
+    var t = master.currentTime || 0
+    cues = cues.filter(function (q) { if (t < q.ms) return true; q.fn(); return false })
+  }, 100)
+
+  function animate(el, frames, opts) {
+    return el.animate(frames, Object.assign({ fill: 'forwards', easing: 'ease' }, opts))
+  }
+
+  // ---------- particles ----------
+  var particles = []
+  var lastFrame = 0
+  var GLYPHS = '{}()<>=;:/*+-01λ#$&[]'.split('')
+
+  function sizeCanvas() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = Math.round(innerWidth * dpr)
+    canvas.height = Math.round(innerHeight * dpr)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  // Cover when the screen is close to the picture's shape; a full-height column
+  // over a blurred backdrop when it is much wider.
+  function layout() {
+    var aspect = colorImg.naturalWidth && colorImg.naturalHeight ? colorImg.naturalWidth / colorImg.naturalHeight : 1.5
+    document.documentElement.style.setProperty('--img-aspect', aspect.toFixed(4))
+    boot.classList.toggle('wide', innerWidth / innerHeight > aspect * 1.25)
+  }
+
+  function spawn(kind, w, h, initial) {
+    var p = { x: Math.random() * w, y: initial ? Math.random() * h : h + 10, life: 0 }
+    if (kind === 'dust') {
+      p.r = 0.8 + Math.random() * 2.4; p.vx = (Math.random() - .5) * 8; p.vy = -(6 + Math.random() * 14); p.tw = Math.random() * 6
+    } else if (kind === 'code') {
+      p.y = initial ? Math.random() * h : -10
+      p.ch = GLYPHS[(Math.random() * GLYPHS.length) | 0]; p.size = 11 + Math.random() * 9
+      p.vx = 0; p.vy = 10 + Math.random() * 18; p.tw = Math.random() * 6
+    } else if (kind === 'stars') {
+      p.y = Math.random() * h * .75; p.r = .5 + Math.random() * 1.7; p.vx = 0; p.vy = 0; p.tw = Math.random() * 6
+      p.shoot = Math.random() < .015
+      if (p.shoot) { p.x = Math.random() * w * .6 + w * .3; p.vx = -(300 + Math.random() * 180); p.vy = 120 + Math.random() * 70 }
+    } else {
+      p.r = 1 + Math.random() * 2.6; p.vx = (Math.random() - .5) * 10; p.vy = -(14 + Math.random() * 20); p.tw = Math.random() * 6
+      p.diamond = Math.random() < .35
+    }
+    return p
+  }
+
+  function tick(now) {
+    var dt = Math.min((now - lastFrame) / 1000, .05)
+    lastFrame = now
+    var w = innerWidth, h = innerHeight
+    ctx.clearRect(0, 0, w, h)
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i]
+      p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt
+      var tw = .55 + .45 * Math.sin(p.life * 2.4 + p.tw)
+      if (c.fx === 'dust') {
+        ctx.fillStyle = 'rgba(255, 196, 120,' + (.55 * tw) + ')'
+        ctx.shadowColor = 'rgba(255, 160, 80, .9)'; ctx.shadowBlur = 8
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        if (p.y < -10) particles[i] = spawn('dust', w, h, false)
+      } else if (c.fx === 'code') {
+        ctx.shadowColor = 'rgba(120, 190, 255, .8)'; ctx.shadowBlur = 6
+        ctx.fillStyle = 'rgba(170, 215, 255,' + (.35 * tw) + ')'
+        ctx.font = p.size + 'px ui-monospace, Menlo, monospace'
+        ctx.fillText(p.ch, p.x, p.y)
+        if (p.y > h + 20) particles[i] = spawn('code', w, h, false)
+      } else if (c.fx === 'stars') {
+        if (p.shoot) {
+          ctx.shadowBlur = 0
+          var g = ctx.createLinearGradient(p.x, p.y, p.x - p.vx * .12, p.y - p.vy * .12)
+          g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)')
+          ctx.strokeStyle = g; ctx.lineWidth = 1.4
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .12, p.y - p.vy * .12); ctx.stroke()
+          if (p.x < -40 || p.y > h + 40) particles[i] = spawn('stars', w, h, true)
+        } else {
+          ctx.shadowColor = 'rgba(200, 180, 255, .9)'; ctx.shadowBlur = 6
+          ctx.fillStyle = 'rgba(235, 228, 255,' + (.75 * tw * tw) + ')'
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+          if (Math.random() < .0008) particles[i] = spawn('stars', w, h, true)
+        }
+      } else {
+        ctx.shadowColor = 'rgba(60, 230, 170, .9)'; ctx.shadowBlur = 8
+        ctx.fillStyle = 'rgba(190, 255, 230,' + (.6 * tw) + ')'
+        if (p.diamond) {
+          var s = p.r * 2.2
+          ctx.beginPath(); ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s * .45, p.y); ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s * .45, p.y); ctx.closePath(); ctx.fill()
+        } else {
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        }
+        if (p.y < -10) particles[i] = spawn('sparkle', w, h, false)
+      }
+    }
+    ctx.shadowBlur = 0
+    requestAnimationFrame(tick)
+  }
+
+  function startParticles() {
+    sizeCanvas()
+    var n = c.fx === 'stars' ? 160 : c.fx === 'code' ? 70 : 100
+    for (var i = 0; i < n; i++) particles.push(spawn(c.fx, innerWidth, innerHeight, true))
+    lastFrame = performance.now()
+    requestAnimationFrame(tick)
+  }
+
+  // ---------- the run ----------
+  var reachedTail = false
+  function run() {
+    layout()
+    startParticles()
+    // The backdrop arrives with the colour, so the line-art stage stays on black.
+    animate(backdrop, [{ opacity: 0 }, { opacity: 1 }], { duration: reduced ? 900 : T.colorDraw + 600, delay: reduced ? 200 : T.colorIn })
+    master = animate(art, [{ transform: 'scale(1.12) translateY(1.5%)' }, { transform: 'scale(1.0) translateY(0)' }],
+      { duration: T.total, easing: 'cubic-bezier(.2,.6,.2,1)' })
+
+    if (reduced) {
+      colorImg.style.webkitMaskSize = colorImg.style.maskSize = '400% 400%'
+      animate(colorImg, [{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 200 })
+    } else {
+      animate(lineImg, [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: T.lineIn })
+      animate(lineImg, [
+        { webkitMaskPosition: '100% 0', maskPosition: '100% 0' },
+        { webkitMaskPosition: '0% 0', maskPosition: '0% 0' },
+      ], { duration: T.lineDraw, delay: T.lineIn, easing: 'cubic-bezier(.45,.05,.35,1)' })
+      animate(colorImg, [{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: 1 }], { duration: T.colorDraw, delay: T.colorIn })
+      animate(colorImg, [
+        { webkitMaskSize: '0% 0%', maskSize: '0% 0%' },
+        { webkitMaskSize: '420% 420%', maskSize: '420% 420%' },
+      ], { duration: T.colorDraw, delay: T.colorIn, easing: 'cubic-bezier(.5,0,.3,1)' })
+      animate(lineImg, [{ opacity: 1 }, { opacity: 0 }], { duration: 1000, delay: T.lineOut })
+    }
+
+    animate(document.getElementById('title'), [{ opacity: 0, letterSpacing: '.6em' }, { opacity: .95, letterSpacing: '.4em' }], { duration: 1200, delay: T.uiIn })
+    animate(document.getElementById('sub'), [{ opacity: 0 }, { opacity: 1 }], { duration: 1000, delay: T.uiIn + 500 })
+
+    var steps = [[400, 8], [1300, 22], [2300, 37], [3300, 55], [4400, 68], [5600, 84], [6700, 96], [7300, 100]]
+    steps.forEach(function (s) { cue(s[0], function () { fill.style.width = s[1] + '%' }) })
+    cue(1600, function () { hint.textContent = '点一下直接进入' })
+    cue(T.tail, atTail)
+    tell('started')
+  }
+
+  function atTail() {
+    if (reachedTail) return
+    reachedTail = true
+    fill.style.width = '100%'
+    if (host) tell('tail')
+    else boot.setAttribute('data-state', 'leaving')
+  }
+
+  // Called by the launcher while it is still waiting for the real app's window.
+  window.bootWaiting = function (text) { hint.textContent = text }
+
+  function skip() {
+    if (host) tell('skip')
+    else atTail()
+  }
+  window.addEventListener('pointerdown', skip)
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); skip() }
+  })
+  window.addEventListener('resize', function () { sizeCanvas(); layout() })
+
+  var ready = 0
+  function go() { if (++ready === 2) run() }
+  lineImg.onload = go; colorImg.onload = go
+  lineImg.onerror = colorImg.onerror = function () { tell('error'); go() }
+  lineImg.src = key + '-line.jpg'
+  colorImg.src = key + '.jpg'
+  backdrop.src = key + '.jpg'
+})()
+</script>
+</body>
+</html>

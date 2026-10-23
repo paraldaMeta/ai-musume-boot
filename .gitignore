@@ -1,0 +1,4 @@
+launcher/build/
+.DS_Store
+.claude/
+*.iconset/
